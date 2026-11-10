@@ -1,0 +1,13 @@
+{
+  "history": "clock-fading",
+  "alert-triangle": "triangle-exclamation-point",
+  "triangle-alert": "triangle-exclamation-point",
+  "alert-circle": "circle-question-mark",
+  "circle-help": "circle-question-mark",
+  "help-circle": "circle-question-mark",
+  "check-circle": "circle-check",
+  "filter": "funnel",
+  "bar-chart": "chart-column",
+  "bar-chart-3": "chart-column",
+  "bar-chart-2": "chart-no-axes-column"
+}

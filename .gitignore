@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node / Remotion
+node_modules/
+remotion-app/out/
+dist/
+.env
+.DS_Store
+
+# Model files (re-download per README step 3)
+models/
+
+# Generated: jobs, audio, images, videos
+jobs/*
+!jobs/.gitkeep
+remotion-app/public/*
+!remotion-app/public/.gitkeep
+*.mp4
+*.wav
+
+# Claude Code local files
+.claude/settings.local.json
