@@ -3,7 +3,7 @@ import { Composition } from "remotion";
 import { SceneVideo, sceneFrames } from "./SceneVideo";
 import type { SceneProps } from "./types";
 
-const FPS = 30;
+const FPS = 24; // output frame rate
 
 // Studio preview default. The pipeline overrides it with --props.
 const sample: SceneProps = {

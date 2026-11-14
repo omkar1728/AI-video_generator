@@ -4,16 +4,16 @@ Convert `script.md` (+ `source.md` for exact code and facts) into `scenes.json`.
 
 ## Top level
 ```json
-{ "title": "...", "voice": "am_liam", "voices": {"A": "af_heart", "B": "am_michael"}, "captions": false, "pronunciations": {"Term": "spoken form"}, "scenes": [ ... ] }
+{ "title": "...", "voice": "am_liam", "voices": {"A": "af_heart", "B": "am_michael"}, "captions": true, "pronunciations": {"Term": "spoken form"}, "scenes": [ ... ] }
 ```
-Voices: single narrator = `"voice"` only (default `am_liam`). Multiple voices = `"voices"` map of speaker label to Kokoro voice (female e.g. `af_heart`, `af_bella`, `bf_emma`; male e.g. `am_michael`, `am_adam`, `bm_george`) and per scene either `"speaker": "A"` (whole narration) or `"narration": [{"speaker":"A","text":"..."},{"speaker":"B","text":"..."}]` for dialogue within a scene. Use multiple voices only when the user asks (e.g. "two hosts"); for hosts, A leads and B reacts or adds the detail, and avoid more than 3 lines per scene. Set `"captions": true` only if asked.
+Voices: single narrator = `"voice"` only (default `am_liam`). Multiple voices = `"voices"` map of speaker label to Kokoro voice (female e.g. `af_heart`, `af_bella`, `bf_emma`; male e.g. `am_michael`, `am_adam`, `bm_george`) and per scene either `"speaker": "A"` (whole narration) or `"narration": [{"speaker":"A","text":"..."},{"speaker":"B","text":"..."}]` for dialogue within a scene. Use multiple voices only when the user asks (e.g. "two hosts"); for hosts, A leads and B reacts or adds the detail, and avoid more than 3 lines per scene. Captions are ON by default (set `false` only if asked). Output is 1080p by default.
 
 ## Theme (optional; omit for the default dark technical look)
 `"theme": {"mode": "dark"|"light", "bg": "#hex", "text": "#hex", "muted": "#hex", "palettes": [["#accentA","#accentB"], ...]}`
 Palettes (2 to 4 pairs) cycle per scene. Keep strong contrast between bg and text. Examples: light clean = `{"mode":"light","palettes":[["#0ea5e9","#6366f1"],["#db2777","#f97316"]]}`; warm = dark with `bg "#1a0f0a"` and orange/amber pairs. Only set fields you need.
 
 ## Scene fields
-Common: `id` (`s1-hook`, unique, kebab), `type`, `title` (<= 6 words), `icon` (lucide icon name, kebab-case, e.g. `database`, `brain-circuit`, `search`, `file-text`, `server`, `cloud`, `shield-check`, `rocket`, `puzzle`, `layers`, `git-branch`, `zap`, `bot`, `book-open`; an emoji also works), `narration` (verbatim from script; string or dialogue list).
+Common: `id` (`s1-hook`, unique, kebab), `type`, `title` (<= 6 words), `icon` (lucide icon name, kebab-case, e.g. `database`, `brain-circuit`, `search`, `file-text`, `server`, `cloud`, `shield-check`, `rocket`, `puzzle`, `layers`, `git-branch`, `zap`, `bot`, `book-open`; an emoji also works), `narration` (verbatim from script; string or dialogue list). Nothing from the source md may be lost: put every fact in narration, and show as many as fit on screen (use multiple scenes for long tables/lists).
 
 | type | extra fields |
 |---|---|

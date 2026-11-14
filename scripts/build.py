@@ -29,7 +29,13 @@ TYPES = {"title", "bullets", "code", "diagram", "compare", "stats", "image", "sv
 PRONUNCIATIONS = {
     "LlamaIndex": "Llama Index", "LlamaParse": "Llama Parse", "LlamaHub": "Llama Hub",
     "RAG": "rag", "GPU": "G P U", "LLM": "L L M", "LLMs": "L L Ms", "API": "A P I", "JSON": "jason",
-    "SDK": "S D K", "OCR": "O C R", "SQL": "sequel", "CLI": "C L I", "PDF": "P D F",
+    "SDK": "ess dee kay", "OCR": "oh see ar", "SQL": "sequel", "CLI": "see el eye", "PDF": "pee dee eff",
+    "AI": "ay eye", "API": "ay pee eye", "APIs": "ay pee eyes", "GPT": "jee pee tee", "CEO": "see ee oh",
+    "CFO": "see eff oh", "HR": "aitch ar", "HTTP": "aitch tee tee pee", "AWS": "ay double you ess",
+    "MCP": "em see pee", "EBIT": "ee bit", "EBITDA": "ee bit dah", "ROE": "ar oh ee", "ROCE": "ar oh see ee",
+    "GAAP": "gap", "MIS": "em eye ess", "MNC": "em en see", "EMEA": "ee mee ah", "APAC": "ay pack",
+    "SOC": "sock", "UI": "you eye", "UX": "you ex", "VS": "vee ess",
+    "ML": "em el", "LLM": "el el em", "LLMs": "el el ems", "GPU": "jee pee you", "CPU": "see pee you",
 }
 
 
@@ -74,8 +80,8 @@ def validate(data: dict) -> None:
                 errs.append(f"{tag}: unknown icon '{ic}' (try: {', '.join(near) or 'see scripts/lucide_icons.json'})")
         nar = s.get("narration", "")
         words = len(nar.split()) if isinstance(nar, str) else sum(len(l.get("text", "").split()) for l in nar)
-        if words > 70:
-            print(f"warn {tag}: narration is {words} words (target 25-55)")
+        if words > 130:
+            print(f"warn {tag}: narration is {words} words (target 40-110)")
     if not data.get("scenes"):
         errs.append("no scenes")
     if errs:
@@ -95,13 +101,22 @@ def _init_worker(threads: int) -> None:
     _K = Kokoro.from_session(ort.InferenceSession(str(MODEL), sess_options=opts), str(VOICES))
 
 
+def _apply_pron(text: str, pron: dict) -> str:
+    """Single-pass, whole-word, longest-first replacement (no chained rewrites)."""
+    import re
+    if not pron:
+        return text
+    keys = sorted(pron, key=len, reverse=True)
+    pat = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(re.escape(k) for k in keys) + r")(?![A-Za-z0-9])")
+    return pat.sub(lambda m: pron[m.group(1)], text)
+
+
 def _synth(task: tuple) -> tuple[str, float]:
     """Runs in a worker process: dialogue lines -> one wav. Returns (scene id, seconds)."""
     sid, wav, stamp, key, resolved, speed, pron = task
     chunks, sr = [], 24000
     for v, text in resolved:
-        for w, spoken in pron.items():
-            text = text.replace(w, spoken)
+        text = _apply_pron(text, pron)
         samples, sr = _K.create(text, voice=v, speed=speed, lang="en-us")
         chunks += [samples, np.zeros(int(sr * GAP), dtype=samples.dtype)]
     audio = np.concatenate(chunks[:-1])

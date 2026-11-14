@@ -33,6 +33,16 @@ Input: path to a `.md` file (argument). Optional user hints: length, audience, v
 - Default voice is `am_liam`. Change voice: set `"voice"` (list with `python scripts/test_voice.py --list`). Mispronounced word: add to `"pronunciations"` in scenes.json.
 - Studio preview: `cd remotion-app && npx remotion studio`.
 
+## Standing rules (apply to every video)
+- **Lossless content:** never drop, merge away or summarise out any fact, number, name, date, quote, table row, caveat or source from the md. Every detail must appear in narration (spoken) and, where it fits, on screen. Scene count and length scale with the md (long md = many scenes, 10+ minutes is fine). After writing scenes.json, run a coverage check: walk the md section by section and confirm each fact is in some narration.
+- **Subtitles:** always on (`captions` true).
+- **Resolution:** always 1080p (1920x1080).
+- **Improve the skill each video:** after each build, note what went wrong or was awkward (layout, pronunciation, caps, validation) and edit this skill, its prompts or scripts so the next video benefits.
+
 ## Notes
-- Kokoro is CPU, int8 model. Audio runs in parallel (`--workers N`, default cores/2, 2 threads each); renders run `--parallel N` scenes at once (default 2) using ~80% of cores. Override with `"concurrency"` (tabs per render) in scenes.json. Default size 1280x720; set `"width"`/`"height"` to change.
+- **Long jobs run in background shells.** Audio (`--audio-only`) and the full build/render take many minutes on long md. Always launch them with `run_in_background: true` (never foreground, never a trailing `&` inside a foreground call), then wait for the completion notification. Do not poll or sleep. Tell the user the current step when asked.
+- Audio is already multi-process; use `--parallel N` (about cores/4) for renders. Rendering needs audio durations, so run audio first.
+- Kokoro is CPU, int8 model. Audio runs in parallel (`--workers N`, default cores/2, 2 threads each); renders run `--parallel N` scenes at once (default 2) using ~80% of cores. Override with `"concurrency"` (tabs per render) in scenes.json. Default output 1920x1080 (1080p; layouts authored at 1280x720 and scaled). Set `"width"` (e.g. 1280) to change. Subtitles (word-highlighted captions) are ON by default; set `"captions": false` to disable.
 - Remotion licence: free for individuals/small teams.
+- Output frame rate is 24 fps (set `FPS` in `remotion-app/src/Root.tsx`). Changing it re-renders all scenes.
+- Use parallel subagents to speed up processing of scenes. Each subagent can handle a portion of the work concurrently, reducing overall render time.

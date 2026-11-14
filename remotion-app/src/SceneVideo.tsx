@@ -8,20 +8,48 @@ import { CompareScene, ImageScene, StatsScene, SvgScene } from "./scenes2";
 export const PAD_SECONDS = 0.6;
 export const sceneFrames = (duration: number, fps: number) => Math.ceil((duration + PAD_SECONDS) * fps);
 
-const Captions: React.FC<{ text: string; frames: number; accent: [string, string] }> = ({ text, frames, accent }) => {
+const CAP_BAND = 0.14; // bottom share of the frame reserved for subtitles
+const CONTENT_SCALE = 1 - CAP_BAND;
+
+/** Split narration into movie-style subtitle chunks (<= ~2 lines each). */
+const chunkNarration = (text: string, maxChars = 66): string[] => {
+  const sentences = text.replace(/\s+/g, " ").trim().match(/[^.!?;:]+[.!?;:]?\s*/g) ?? [text];
+  const out: string[] = [];
+  for (const sent of sentences) {
+    let rest = sent.trim();
+    while (rest.length > maxChars) {
+      // prefer a comma break near the middle, else a space near the middle
+      const mid = Math.min(maxChars, Math.floor(rest.length / 2) + 10);
+      let cut = rest.lastIndexOf(", ", mid);
+      if (cut < 20) cut = rest.lastIndexOf(" ", mid);
+      else cut += 1;
+      if (cut < 20) cut = rest.indexOf(" ", mid);
+      if (cut < 0) break;
+      out.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) out.push(rest);
+  }
+  return out;
+};
+
+const Captions: React.FC<{ text: string; spokenFrames: number }> = ({ text, spokenFrames }) => {
   const frame = useCurrentFrame();
-  const words = text.split(/\s+/);
-  const spoken = frames - 0.6 * 30;
-  const idx = Math.floor((frame / spoken) * words.length);
-  const winStart = Math.max(0, Math.min(words.length - 9, idx - 3));
-  const win = words.slice(winStart, winStart + 9);
+  const chunks = React.useMemo(() => chunkNarration(text), [text]);
+  const weights = chunks.map((c) => c.length + 12); // +pause allowance
+  const total = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  let current = chunks.length - 1;
+  for (let i = 0; i < chunks.length; i++) {
+    acc += weights[i];
+    if (frame < (acc / total) * spokenFrames) { current = i; break; }
+  }
+  if (frame > spokenFrames + 10) return null;
   return (
-    <div style={{ position: "absolute", bottom: 26, left: 0, right: 0, textAlign: "center", fontSize: 28 }}>
-      <span style={{ background: "rgba(0,0,0,0.6)", padding: "8px 18px", borderRadius: 12 }}>
-        {win.map((w, i) => (
-          <span key={i} style={{ color: winStart + i <= idx ? accent[0] : "#94a3b8", marginRight: 8 }}>{w}</span>
-        ))}
-      </span>
+    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: `${CAP_BAND * 100}%`, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 120px" }}>
+      <div style={{ background: "rgba(0,0,0,0.72)", padding: "8px 24px", borderRadius: 10, fontSize: 30, lineHeight: 1.25, color: "#fff", textAlign: "center", maxWidth: 1040 }}>
+        {chunks[current]}
+      </div>
     </div>
   );
 };
@@ -40,7 +68,7 @@ const cssVars = (t: Theme = {}): React.CSSProperties => {
 
 export const SceneVideo: React.FC<SceneProps> = ({ scene, index, total, captions, theme }) => {
   const frame = useCurrentFrame();
-  const { durationInFrames } = useVideoConfig();
+  const { durationInFrames, fps } = useVideoConfig();
   const accent = palette(index, theme?.palettes);
   const fade = Math.min(
     interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" }),
@@ -62,8 +90,8 @@ export const SceneVideo: React.FC<SceneProps> = ({ scene, index, total, captions
   return (
     <AbsoluteFill style={{ fontFamily: SANS, color: "var(--text)", ...cssVars(theme) }}>
       <Background accent={accent} />
-      <AbsoluteFill style={{ opacity: fade }}>{content}</AbsoluteFill>
-      {captions ? <Captions text={scene.narration} frames={durationInFrames} accent={accent} /> : null}
+      <AbsoluteFill style={{ opacity: fade, transform: captions ? `scale(${CONTENT_SCALE})` : undefined, transformOrigin: "50% 0%" }}>{content}</AbsoluteFill>
+      {captions ? <Captions text={scene.narration} spokenFrames={Math.round(scene.duration * fps)} /> : null}
       <div style={{ position: "absolute", right: 30, top: 22, fontSize: 18, color: "var(--muted)" }}>{index + 1} / {total}</div>
       {scene.audio ? <Audio src={staticFile(scene.audio)} /> : null}
     </AbsoluteFill>

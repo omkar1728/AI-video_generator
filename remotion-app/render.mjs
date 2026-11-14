@@ -39,7 +39,7 @@ const todo = [];
 data.scenes.forEach((scene, index) => {
   if (only && !only.includes(scene.id)) return;
   const hash = crypto.createHash("sha1")
-    .update(JSON.stringify({ scene, index, total: data.scenes.length, captions: !!data.captions, theme: data.theme, templateHash }))
+    .update(JSON.stringify({ scene, index, total: data.scenes.length, captions: data.captions !== false, theme: data.theme, templateHash, w: data.width ?? 1920 }))
     .update(fileHash(scene.audio)).update(fileHash(scene.image)).digest("hex");
   const out = path.join(outDir, `${String(index + 1).padStart(2, "0")}-${scene.id}.mp4`);
   const stamp = out + ".hash";
@@ -58,14 +58,17 @@ if (todo.length) {
   const queue = [...todo];
   const worker = async () => {
     for (let t; (t = queue.shift()); ) {
-    const inputProps = { scene: t.scene, index: t.index, total: data.scenes.length, captions: !!data.captions, theme: data.theme };
+    const inputProps = { scene: t.scene, index: t.index, total: data.scenes.length, captions: data.captions !== false, theme: data.theme };
     const comp = await selectComposition({ serveUrl, id: "Scene", inputProps });
-    comp.width = data.width ?? 1280;
-    comp.height = data.height ?? 720;
+    // layouts are authored at 1280x720; render at 1080p (default) via scale
+    const outW = data.width ?? 1920;
+    const scale = outW / 1280;
+    comp.width = 1280;
+    comp.height = 720;
     const t0 = Date.now();
     await renderMedia({
       composition: comp, serveUrl, codec: "h264", outputLocation: t.out, inputProps,
-      concurrency: perRender, overwrite: true, audioCodec: "aac",
+      concurrency: perRender, scale, overwrite: true, audioCodec: "aac",
     });
     fs.writeFileSync(t.stamp, t.hash);
     console.log(`rendered ${t.scene.id} in ${((Date.now() - t0) / 1000).toFixed(0)}s`);

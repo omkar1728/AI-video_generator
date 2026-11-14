@@ -60,22 +60,26 @@ export const BulletsScene: React.FC<SceneBodyProps> = ({ scene, accent, frames }
   const frame = useCurrentFrame();
   const items = scene.bullets ?? [];
   const hero = useIn(6, 14);
+  const n = items.length;
+  const fs = n >= 5 ? 32 : n === 4 ? 38 : 42;
+  const badge = n >= 5 ? 50 : n === 4 ? 58 : 64;
+  const vpad = n >= 5 ? 10 : 18;
   return (
     <AbsoluteFill style={{ padding: PAD, paddingTop: 70 }}>
       <SceneTitle title={scene.title} icon={scene.icon} accent={accent} />
       <div style={{ display: "flex", flex: 1, alignItems: "center", gap: 50, marginTop: 20 }}>
-        <div style={{ flex: 1.5, display: "flex", flexDirection: "column", gap: 22 }}>
+        <div style={{ flex: 1.5, display: "flex", flexDirection: "column", gap: n >= 5 ? 14 : 22 }}>
           {items.map((b, i) => {
             const p = useIn(revealFrame(i, items.length, frames));
             return (
               <div key={i} style={{
-                display: "flex", alignItems: "center", gap: 22, padding: "18px 26px", borderRadius: 22,
+                display: "flex", alignItems: "center", gap: 22, padding: `${vpad}px 26px`, borderRadius: 22,
                 background: "var(--card)", border: `1px solid ${accent[i % 2]}55`,
                 opacity: p, transform: `translateX(${interpolate(p, [0, 1], [-80, 0])}px)`,
                 boxShadow: `0 0 30px ${accent[i % 2]}22`,
               }}>
-                <IconBadge name={bulletIcon(b, "check")} size={64} accent={accent} progress={p} />
-                <span style={{ fontSize: 42, fontWeight: 600 }}>{bulletText(b)}</span>
+                <IconBadge name={bulletIcon(b, "check")} size={badge} accent={accent} progress={p} />
+                <span style={{ fontSize: fs, fontWeight: 600, lineHeight: 1.15 }}>{bulletText(b)}</span>
               </div>
             );
           })}
@@ -211,7 +215,7 @@ export const DiagramScene: React.FC<SceneBodyProps> = ({ scene, accent, frames }
             const pad = Math.abs(ux) > Math.abs(uy) ? cardW / 2 + 8 : cardH / 2 + 8;
             const x1 = pos[a].x + ux * pad; const y1 = pos[a].y + uy * pad;
             const x2 = pos[b].x - ux * pad; const y2 = pos[b].y - uy * pad;
-            const start = nodeStart(b) - 8;
+            const start = Math.max(nodeStart(a), nodeStart(b)) - 8;
             const p = Math.max(0, Math.min(1, (frame - start) / 14));
             const ex = x1 + (x2 - x1) * p; const ey = y1 + (y2 - y1) * p;
             const t = ((frame - start) % 45) / 45;
@@ -225,7 +229,7 @@ export const DiagramScene: React.FC<SceneBodyProps> = ({ scene, accent, frames }
                     <circle cx={x1 + (x2 - x1) * t} cy={y1 + (y2 - y1) * t} r={7} fill="var(--text)" style={{ filter: `drop-shadow(0 0 8px ${accent[0]})` }} />
                   </>
                 ) : null}
-                {label && p >= 1 ? (
+                {label && p >= 1 && len > label.length * 14 + 2 * pad + 40 ? (
                   <g transform={`translate(${(x1 + x2) / 2},${(y1 + y2) / 2})`}><rect x={-label.length * 7 - 12} y={-18} width={label.length * 14 + 24} height={36} rx={18} fill="var(--panel)" stroke={accent[0]} /><text y={7} fill="var(--text)" fontSize={20} textAnchor="middle" fontWeight={600}>{label}</text></g>
                 ) : null}
               </g>
