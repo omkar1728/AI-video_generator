@@ -168,6 +168,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("job")
     ap.add_argument("--only", help="comma separated scene ids to render")
+    ap.add_argument("--first", type=int, help="render only the first N scenes and join them into final.part.mp4 (partial output; rest can be built later, cached scenes are reused)")
     ap.add_argument("--audio-only", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--out", help="also copy final.mp4 to this path (the skill uses <md folder>/<md name>.mp4)")
@@ -185,6 +186,9 @@ def main() -> None:
         return
 
     build = jobdir / "build"
+    scenes = data["scenes"][: a.first] if a.first else data["scenes"]
+    if a.first:
+        a.only = ",".join(s["id"] for s in scenes)
     cmd = ["node", "render.mjs", str(resolved), str(build), "--parallel", str(a.parallel)]
     if a.only:
         cmd += ["--only", a.only]
@@ -193,14 +197,14 @@ def main() -> None:
     subprocess.run(cmd, cwd=ROOT / "remotion-app", check=True)
 
     clips = sorted(build.glob("*.mp4"))
-    expected = [f"{i + 1:02d}-{s['id']}.mp4" for i, s in enumerate(data["scenes"])]
+    expected = [f"{i + 1:02d}-{s['id']}.mp4" for i, s in enumerate(scenes)]
     clips = [build / n for n in expected if (build / n).exists()]
     if len(clips) != len(expected):
         print("not all scenes rendered; skipping concat")
         return
     lst = build / "concat.txt"
     lst.write_text("".join(f"file '{c.resolve()}'\n" for c in clips), encoding="utf-8")
-    final = jobdir / "final.mp4"
+    final = jobdir / ("final.part.mp4" if a.first else "final.mp4")
     r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(final)])
     if r.returncode:
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(lst),

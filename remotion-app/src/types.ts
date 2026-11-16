@@ -51,6 +51,7 @@ export type Scene = {
 };
 
 export type Theme = {
+  style?: "sketchnote"; // opt-in black-board hand-drawn look
   mode?: "dark" | "light";
   bg?: string; // page background
   text?: string;

@@ -31,5 +31,21 @@ Visual: ...
 Narration: ...
 ```
 
+## Conversation style (chosen in step 0)
+Applies on top of the video style. Every style stays lossless (all facts, numbers, names, tables and caveats appear).
+- **Rephrased narration (default):** restate each point in your own plain spoken sentences. Never read the md's sentences aloud as they are. Drop markup, keep meaning.
+- **Interview:** Q&A between two voices. `A:` = host asks, `B:` = expert answers.
+  - Subagent Q reads `source.md` and writes the questions a curious listener would ask, in md order, one per section point (every section covered). Output: `jobs/<job>/parts/interview_q.md`.
+  - Subagent A reads `source.md` and answers each question using only the md's content (no outside facts, keep caveats and `[verify]` tags). Output: `jobs/<job>/parts/interview_a.md`.
+  - Merge: `Q1` then `A1`, alternating. Keep each line a complete spoken sentence, 1 to 3 sentences per turn. Then check coverage against the md.
+- **Direct passthrough:** narration = the md's words in order. Remove only markdown symbols, link URLs (keep link text), code fences (describe code in one line as `Code: ...` only if the md has no prose for it). Tables: read row by row. No rewording, no added explanation. Scene split by section only.
+- **Explainer:** teacher voice. For each main idea: plain definition, an analogy from everyday life, one concrete example, then why it matters. Simple words first, then the technical name. Still lossless: every fact from the md must still be spoken.
+  - **Visuals per scene:** name the graphic in `Visual:` (type `svg`/`diagram`/`image`, what it draws, metaphor used). Each main idea gets one.
+  - **Code scenes:** number the snippet lines in `script.md` (`L1`, `L2`...) and list the pointer plan: which line is explained in which narration sentence, with the cue word. Write narration so every explained line is named in order.
+
 ## Multiple voices
-If the user wants two hosts, write narration as lines tagged `A:` / `B:` (A leads, B adds detail or reacts). Keep each line a complete spoken sentence.
+If the user wants two hosts (including Interview), write narration as lines tagged `A:` / `B:` (A leads, B adds detail or reacts). Keep each line a complete spoken sentence. Interview: A = host (questions), B = expert (answers).
+
+## Pronunciation
+- Spoken form for every technical term and acronym: write it so the TTS reads it right (e.g. "S Q L" is not allowed; use the map). List all jargon in `script.md` under a `## Pronunciations` heading so step 2b can map them.
+- No digits or symbols in narration; write numbers as words.
