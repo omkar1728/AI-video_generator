@@ -74,3 +74,4 @@ Input: path to a `.md` file in the repo (argument). Optional hints in the prompt
 - Kokoro and Remotion are free for this use (individual/small team licence).
 - Full rules, sketchnote style and the learnings log live in `../md-to-video/SKILL.md`. Read its Learnings section before a long job.
 - Clone github.com/omkar1728/AI-video_generator for setup
+- Use parallel agents to speed up execution 
