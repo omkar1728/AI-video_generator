@@ -24,7 +24,7 @@ ICONS = set(json.loads((ROOT / "scripts/lucide_icons.json").read_text()))
 ALIASES = json.loads((ROOT / "remotion-app/src/icon_aliases.json").read_text())
 DEFAULT_VOICE = "am_liam"
 GAP = 0.25  # seconds of silence between dialogue lines
-TYPES = {"title", "bullets", "code", "diagram", "compare", "stats", "image", "svg", "outro"}
+TYPES = {"title", "bullets", "code", "diagram", "compare", "stats", "image", "svg", "outro", "manim"}  # manim: drawn by Manim (scripts/manim_scene.py)
 
 PRONUNCIATIONS = {
     "LlamaIndex": "Llama Index", "LlamaParse": "Llama Parse", "LlamaHub": "Llama Hub",
@@ -53,7 +53,7 @@ def icon_refs(s: dict):
                     yield it.get("icon")
 
 
-def validate(data: dict) -> None:
+def validate(data: dict, job: str = "") -> None:
     errs = []
     ids = set()
     for i, s in enumerate(data.get("scenes", [])):
@@ -70,6 +70,11 @@ def validate(data: dict) -> None:
         need = {"code": "code", "diagram": "nodes", "compare": "left", "stats": "stats", "image": "image", "svg": "svg", "bullets": "bullets"}
         if t in need and not s.get(need[t]):
             errs.append(f"{tag}: type '{t}' needs '{need[t]}'")
+        if t == "manim":
+            if not s.get("manim"):
+                errs.append(f"{tag}: type 'manim' needs 'manim' (the class name in jobs/<job>/manim_scenes.py)")
+            elif job and not (ROOT / "jobs" / job / "manim_scenes.py").exists():
+                errs.append(f"{tag}: jobs/{job}/manim_scenes.py not found")
         if t == "compare" and not s.get("right"):
             errs.append(f"{tag}: compare needs 'right'")
         if t == "image" and s.get("image") and not (PUBLIC / s["image"]).exists():
@@ -164,6 +169,24 @@ def make_audio(job: str, data: dict, workers: int | None = None) -> None:
             print("audio made  ", sid, dur)
 
 
+def render_manim_scene(job: str, data: dict, s: dict, index: int, build: Path, force: bool) -> None:
+    """Manim scene -> build/NN-id.mp4, cached by content hash (same naming as Remotion clips)."""
+    from manim_scene import build_manim_clip, scene_hash
+
+    out = build / f"{index + 1:02d}-{s['id']}.mp4"
+    stamp = out.with_suffix(".mp4.hash")
+    width = data.get("width", 1920)
+    captions = data.get("captions", True) is not False
+    h = scene_hash(job, s, s["duration"], width, captions)
+    if not force and out.exists() and stamp.exists() and stamp.read_text(encoding="utf-8") == h:
+        print("cached", s["id"])
+        return
+    build.mkdir(parents=True, exist_ok=True)
+    build_manim_clip(job, s, s["duration"], ROOT / "remotion-app/public" / s["audio"], out, width, captions, build)
+    stamp.write_text(h, encoding="utf-8")
+    print("manim rendered", s["id"])
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("job")
@@ -178,7 +201,7 @@ def main() -> None:
 
     jobdir = ROOT / "jobs" / a.job
     data = json.loads((jobdir / "scenes.json").read_text(encoding="utf-8"))
-    validate(data)
+    validate(data, a.job)
     make_audio(a.job, data, a.workers)
     resolved = jobdir / "scenes.resolved.json"
     resolved.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -189,14 +212,19 @@ def main() -> None:
     scenes = data["scenes"][: a.first] if a.first else data["scenes"]
     if a.first:
         a.only = ",".join(s["id"] for s in scenes)
-    cmd = ["node", "render.mjs", str(resolved), str(build), "--parallel", str(a.parallel)]
-    if a.only:
-        cmd += ["--only", a.only]
-    if a.force:
-        cmd.append("--force")
-    subprocess.run(cmd, cwd=ROOT / "remotion-app", check=True)
+    wanted = set(a.only.split(",")) if a.only else None
+    targets = [(i, s) for i, s in enumerate(data["scenes"]) if wanted is None or s["id"] in wanted]
+    remotion_ids = [s["id"] for _, s in targets if s["type"] != "manim" and s in scenes]
+    if remotion_ids:
+        cmd = ["node", "render.mjs", str(resolved), str(build), "--parallel", str(a.parallel),
+               "--only", ",".join(remotion_ids)]
+        if a.force:
+            cmd.append("--force")
+        subprocess.run(cmd, cwd=ROOT / "remotion-app", check=True)
+    for i, s in targets:
+        if s["type"] == "manim" and s in scenes:
+            render_manim_scene(a.job, data, s, i, build, a.force)
 
-    clips = sorted(build.glob("*.mp4"))
     expected = [f"{i + 1:02d}-{s['id']}.mp4" for i, s in enumerate(scenes)]
     clips = [build / n for n in expected if (build / n).exists()]
     if len(clips) != len(expected):

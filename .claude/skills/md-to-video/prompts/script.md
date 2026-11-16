@@ -39,8 +39,19 @@ Applies on top of the video style. Every style stays lossless (all facts, number
   - Subagent A reads `source.md` and answers each question using only the md's content (no outside facts, keep caveats and `[verify]` tags). Output: `jobs/<job>/parts/interview_a.md`.
   - Merge: `Q1` then `A1`, alternating. Keep each line a complete spoken sentence, 1 to 3 sentences per turn. Then check coverage against the md.
 - **Direct passthrough:** narration = the md's words in order. Remove only markdown symbols, link URLs (keep link text), code fences (describe code in one line as `Code: ...` only if the md has no prose for it). Tables: read row by row. No rewording, no added explanation. Scene split by section only.
-- **Explainer:** teacher voice. For each main idea: plain definition, an analogy from everyday life, one concrete example, then why it matters. Simple words first, then the technical name. Still lossless: every fact from the md must still be spoken.
-  - **Visuals per scene:** name the graphic in `Visual:` (type `svg`/`diagram`/`image`, what it draws, metaphor used). Each main idea gets one.
+- **Explainer (Feynman ladder + analogies):** teacher voice. The core is the Feynman technique (github.com/guicortei/feynman-technique): explain the mechanism first, name it last, and never say less than the truth. Analogy handling follows the baby-education rules. Still lossless: every fact from the md must still be spoken.
+  - **Order inside each main idea (every idea, in this order):**
+    1. **Mechanism first:** what actually happens, in plain words, before any name. "Two people write in one notebook at once and one erases the other's line" comes before "it is a mutex". Naming a thing is not explaining it.
+    2. **One honest analogy from everyday life:** state the mapping ("the waiter is the server"), then say where it breaks ("the analogy breaks here: a waiter forgets, a server does not").
+    3. **One concrete example** the viewer can picture: a number, a step sequence, a small case.
+    4. **Name last:** the technical term, defined at first use, with an "In other words..." bridge.
+    5. **Why it matters:** one line that ties the analogy back to the real thing.
+  - **Ladder (depth, not skipping):** go up one rung per section: kitchen-table version (no jargon) → beginner version (terms, edge cases named) → specialist detail. Never jump to the top rung in the first scene of a topic.
+  - **Rule zero: simplify is not falsify.** If a simple version would be wrong, say "this is an approximation", give its limit, and deliver the exact version one rung up. Never drop a caveat from the md to make a sentence easier.
+  - **Analogy handling (baby-education rules):** analogy first, then the technical word. Avoid jargon when a plain word works ("create a copy of the blueprint", not "instantiate"). Unavoidable jargon gets an example in the same sentence. No unexplained acronyms. No assumed prior knowledge.
+  - **Tone:** talk to one friend over coffee. Use "you" and "we", ask one rhetorical question per section ("Why does this matter?"), name the common stumble ("This part trips up everyone at first"), short connectors ("Here's the cool part", "But wait").
+  - **Plan table in script.md (per main idea):** `Analogy: ... | Maps to: ... | Breaks at: ... | Example: ... | Visual: ...`. Write it before the narration so the coverage check can see it.
+  - **Visuals per scene:** name the graphic in `Visual:`. Everyday analogies use `svg` (drawn metaphor), `diagram` (flows) or `image` (only if credited and it clearly helps). Math, equations, algorithm steps and graphs use `manim` (see `scenes.md`, type `manim`). Each main idea gets one.
   - **Code scenes:** number the snippet lines in `script.md` (`L1`, `L2`...) and list the pointer plan: which line is explained in which narration sentence, with the cue word. Write narration so every explained line is named in order.
 
 ## Multiple voices

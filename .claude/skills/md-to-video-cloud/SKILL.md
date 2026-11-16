@@ -15,9 +15,10 @@ Input: path to a `.md` file in the repo (argument). Optional hints in the prompt
   - theme: sketchnote (`dark technical` only if the prompt asks for it)
   - voice: `am_liam`
   - video style: technical educational
-  - conversation style: rephrased narration (other options: `Interview`, `Direct passthrough`, `Explainer`, only if the prompt names one; see `../md-to-video/prompts/script.md`)
+  - conversation style: rephrased narration (other options: `Interview`, `Direct passthrough`, `Explainer`, only if the prompt names one; see `../md-to-video/prompts/script.md`). `Explainer` = Feynman ladder with analogies: mechanism before name, one honest analogy with its break point, one example, the term defined at first use, depth up one rung per section, simplify is not falsify.
   - captions on
 - **No sudo, no `!` prefix.** Install everything in user space (see Setup).
+- **Manim scenes need system packages the cloud sandbox may not have** (cairo and pango headers, LaTeX). Check first: `.venv/bin/python -c "import manim"`. If it fails and sudo is unavailable, do not stop: convert each `manim` scene to an `svg` or `diagram` scene that carries the same idea, keep the narration, and say so in the report. Only keep `manim` scenes when the check passes.
 - **Resolution:** always 1080p (`"width": 1920`), matching the md-to-video standing rule. Use 1280 only if the prompt asks for a smaller or faster render, or if the sandbox has 4 cores or fewer (state it in the report).
 - **Resource-aware:** size workers from the sandbox, not a fixed number.
 - **Long jobs in background shells** (`run_in_background: true`), wait for the completion notification, never poll or sleep. Re-launch if a session timeout kills them; caches make rebuilds resume.
@@ -34,6 +35,7 @@ Input: path to a `.md` file in the repo (argument). Optional hints in the prompt
    - Node missing or too old: `curl -fsSL https://fnm.vercel.app/install | bash` or download the Node 22 tarball from nodejs.org into `~/.local` and add to PATH.
    - Python venv: `python3 -m venv .venv` (if `ensurepip` missing: `pip install --user virtualenv && virtualenv .venv`), then `. .venv/bin/activate && pip install -r requirements.txt`.
    - Kokoro models: follow README step 3 (curl into `models/`; skip if present).
+   - Manim (only for `manim` scenes): `pip install manim` in `.venv` (needs cairo headers; see the Manim check under Differences). LaTeX only if the scenes use `MathTex`; otherwise plain `Text` works.
    - `cd remotion-app && npm install`; Remotion fetches headless Chrome on first render. If Chrome fails on missing shared libs, try `npx remotion browser ensure`; as last resort report the missing libs and stop.
    - Re-run `check_deps.py` until it passes. Network failure: retry 3 times, then report and stop.
 
@@ -43,8 +45,9 @@ Input: path to a `.md` file in the repo (argument). Optional hints in the prompt
 
 4b. **Pronunciation pass.** Check each term in `scripts/pronunciations_seed.json` and `build.py` PRONUNCIATIONS first, and add missing ones to `jobs/<job>/pronunciations.json` (e.g. `"SQL": "sequel"`, `"GraphQL": "graph Q L"`). The map must be final before audio runs: the audio cache key includes the whole map, so a later change re-synthesizes every scene. Keys are case sensitive and whole word.
 
-5. **Scenes.** Follow `../md-to-video/prompts/scenes.md`. Write `jobs/<job>/scenes.json` with `"captions": true`, `"width": 1920` (or 1280 per the rule above), `"voice"`. Images only via `python scripts/fetch_image.py <job> <url> <name> "<credit>"`; skip if none good. Explainer style: each concept scene needs a graphic (`svg` first, `diagram` second, image third); code scenes need `pointer` entries (the pointer is not rendered yet, so code scenes also need a `highlight`). Then run the coverage check: walk the md section by section, confirm every fact is in narration.
+5. **Scenes.** Follow `../md-to-video/prompts/scenes.md`. Write `jobs/<job>/scenes.json` with `"captions": true`, `"width": 1920` (or 1280 per the rule above), `"voice"`. Images only via `python scripts/fetch_image.py <job> <url> <name> "<credit>"`; skip if none good. Explainer style: every main idea gets a graphic. Everyday analogies use `svg` (drawn metaphor) or `diagram` (flows), image last. Math, equations, algorithm steps and graphs use `manim` (3Blue1Brown style): `scenes.json` entry with `"manim": "<ClassName>"`, class in `jobs/<job>/manim_scenes.py` subclassing `BaseScene` from `scripts/manim_base.py` (one palette, opacity layers, `self.beat()` after each reveal). Code scenes need `pointer` entries (not rendered yet, so also set `highlight`). Then run the coverage check: walk the md section by section, confirm every fact is in narration.
    - **Long md (more than about 2,500 words or 40+ scenes): parallel subagents.** Split `source.md` at `## ` boundaries (`grep -n '^## ' source.md`) into chunks of about 700 to 1,500 words, one subagent each, all launched in one turn. Brief each with `../md-to-video/prompts/subagent_scenes.md` (fill in job, line range, id prefix p1, p2, ...). The first chunk owns the `title` scene, the last owns the `outro`. Each writes `jobs/<job>/parts/script_N.md` and `parts/scenes_N.json` and checks it with `.venv/bin/python scripts/check_part.py <file>`. Then `python scripts/merge_parts.py <job> [--theme sketchnote]` writes `scenes.json` and `script.md` and reports scene count, duplicate ids and minutes. Agents return word lists for pronunciations, not files: merge those into `pronunciations.json` before audio runs.
+   - Manim scene count and subtitles: build.py burns subtitles from narration for manim clips (spread by character count, no word timing), so keep on-screen text short.
    - For very long md, a subagent may write scenes via a small Python generator in the scratchpad to cut output size. Emit script.md from the same data.
 
 6. **Build (background).**
@@ -73,5 +76,7 @@ Input: path to a `.md` file in the repo (argument). Optional hints in the prompt
 - Titles: a section opener typed `title` mid-video renders like the opening title. Prefer `bullets` or `svg` for mid-video openers.
 - Kokoro and Remotion are free for this use (individual/small team licence).
 - Full rules, sketchnote style and the learnings log live in `../md-to-video/SKILL.md`. Read its Learnings section before a long job.
+- Manim pipeline (2026-11-16): `scripts/manim_scene.py` renders, muxes and burns subtitles; `build.py` treats `type: manim` like other scenes (cached by content hash). Not yet verified end to end (no cairo or LaTeX on the dev machine), so the first cloud run with manim scenes should check one scene's clip with ffprobe before the full build.
 - Clone github.com/omkar1728/AI-video_generator for setup
-- Use parallel agents to speed up execution 
+- Use parallel agents to speed up execution
+- As the individual video parts are generated, chunk it into playable segments of less than 3MB and upload each of them to google drive using the connector. In the folder named claude create a new folder name in format <Date>-topic name and place all the segments there.
